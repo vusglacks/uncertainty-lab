@@ -1,0 +1,6 @@
+@import "tailwindcss";
+
+/* 앱 전역 기본값. 나머지 스타일은 컴포넌트에서 Tailwind 클래스로. */
+html {
+  font-family: system-ui, "Apple SD Gothic Neo", "Segoe UI", Roboto, sans-serif;
+}
