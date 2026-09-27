@@ -22,3 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# AI 도구 로컬 상태 (사람마다 다름, 커밋 안 함)
+.bkit/
+.claude/

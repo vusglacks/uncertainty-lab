@@ -27,7 +27,8 @@ export default function HomePage() {
     navigate(`/exp/${exp.id}`)
   }
 
-  function remove(id) {
+  function remove(id, title) {
+    if (!window.confirm(`"${title}" 실험을 삭제할까요? 되돌릴 수 없어요.`)) return
     deleteExperiment(id)
     setExperiments(listExperiments())
   }
@@ -72,7 +73,7 @@ export default function HomePage() {
               </div>
             </button>
             <button
-              onClick={() => remove(e.id)}
+              onClick={() => remove(e.id, e.title)}
               className="text-xs text-slate-400 hover:text-red-600"
             >
               삭제

@@ -24,10 +24,20 @@ export default function BlockList({ blocks, onChange, onMove, onRemove }) {
             {BLOCK_LABELS[block.type]}
           </span>
           <div className="flex items-center gap-1 text-xs text-slate-400">
-            <button onClick={() => onMove(index, -1)} className="px-1 hover:text-slate-700" title="위로">
+            <button
+              onClick={() => onMove(index, -1)}
+              disabled={index === 0}
+              className="px-1 hover:text-slate-700 disabled:opacity-30 disabled:hover:text-slate-400"
+              title="위로"
+            >
               ↑
             </button>
-            <button onClick={() => onMove(index, 1)} className="px-1 hover:text-slate-700" title="아래로">
+            <button
+              onClick={() => onMove(index, 1)}
+              disabled={index === blocks.length - 1}
+              className="px-1 hover:text-slate-700 disabled:opacity-30 disabled:hover:text-slate-400"
+              title="아래로"
+            >
               ↓
             </button>
             <button

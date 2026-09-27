@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { getExperiment, saveExperiment } from '../lib/storage'
-import { newBlock, duplicateNames, renameInFormula } from '../lib/blocks'
+import { newBlock, duplicateNames, renameInFormula, isNameUsedElsewhere } from '../lib/blocks'
 import BlockList from '../components/BlockList'
 import AddBlockButton from '../components/AddBlockButton'
 
@@ -10,9 +10,12 @@ export default function EditorPage() {
   const { id } = useParams()
   const [exp, setExp] = useState(() => getExperiment(id))
 
-  // 바뀔 때마다 저장. (계산 결과가 아니라 원본만 저장한다)
+  // update()로 실제 편집이 일어났을 때만 저장한다. "마운트 시 한 번은 건너뛴다" 방식은
+  // 개발 모드 StrictMode가 effect를 일부러 두 번 실행하면서 깨졌다(두 번째 실행 때 저장돼버림).
+  // 그래서 "마운트 여부"가 아니라 "실제로 고쳤는지"를 직접 기록한다.
+  const dirty = useRef(false)
   useEffect(() => {
-    if (exp) saveExperiment(exp)
+    if (dirty.current && exp) saveExperiment(exp)
   }, [exp])
 
   if (!exp) {
@@ -26,13 +29,21 @@ export default function EditorPage() {
     )
   }
 
-  const update = (patch) => setExp((prev) => ({ ...prev, ...patch }))
+  const update = (patch) => {
+    dirty.current = true
+    setExp((prev) => ({ ...prev, ...patch }))
+  }
 
   function addBlock(type) {
     update({ blocks: [...exp.blocks, newBlock(type)] })
   }
 
   function removeBlock(blockId) {
+    const block = exp.blocks.find((b) => b.id === blockId)
+    if (block && isNameUsedElsewhere(exp.blocks, block)) {
+      const ok = window.confirm(`"${block.name}" 이름을 다른 블록이 쓰고 있어요. 그래도 삭제할까요?`)
+      if (!ok) return
+    }
     update({ blocks: exp.blocks.filter((b) => b.id !== blockId) })
   }
 

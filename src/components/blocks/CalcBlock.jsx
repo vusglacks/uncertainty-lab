@@ -1,5 +1,8 @@
+import { unknownFormulaVars } from '../../lib/blocks'
+
 // 계산 블록 — 수식을 입력한다. 위 블록의 이름을 변수로 쓴다. (미분·오차 전파는 4차시)
 export default function CalcBlock({ block, namesAbove, onChange }) {
+  const unknown = unknownFormulaVars(block.formula, namesAbove)
   return (
     <div className="space-y-3 text-sm">
       <div className="flex gap-3">
@@ -31,6 +34,11 @@ export default function CalcBlock({ block, namesAbove, onChange }) {
           '없음 (위에 이름 있는 블록을 먼저 만드세요)'
         )}
       </p>
+      {unknown.length > 0 && (
+        <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
+          존재하지 않는 이름이에요: {unknown.join(', ')} — 이름이 바뀌었거나 블록 순서가 바뀌었을 수 있어요.
+        </p>
+      )}
       <p className="text-xs text-slate-400">자동 미분·오차 전파는 4차시에 engine.js를 연결한다.</p>
     </div>
   )
