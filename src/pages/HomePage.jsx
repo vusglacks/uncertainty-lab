@@ -2,12 +2,14 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { listExperiments, saveExperiment, deleteExperiment } from '../lib/storage'
 import { uid } from '../lib/id'
+import ConfirmDialog from '../components/ConfirmDialog'
 
 // 시작 화면 — 내 실험 목록, 새 실험 만들기, 검색.
 export default function HomePage() {
   const navigate = useNavigate()
   const [experiments, setExperiments] = useState(listExperiments)
   const [query, setQuery] = useState('')
+  const [pendingDelete, setPendingDelete] = useState(null) // { id, title } | null
 
   const shown = experiments
     .filter((e) => e.title.toLowerCase().includes(query.trim().toLowerCase()))
@@ -27,10 +29,10 @@ export default function HomePage() {
     navigate(`/exp/${exp.id}`)
   }
 
-  function remove(id, title) {
-    if (!window.confirm(`"${title}" 실험을 삭제할까요? 되돌릴 수 없어요.`)) return
-    deleteExperiment(id)
+  function confirmRemove() {
+    deleteExperiment(pendingDelete.id)
     setExperiments(listExperiments())
+    setPendingDelete(null)
   }
 
   return (
@@ -73,7 +75,7 @@ export default function HomePage() {
               </div>
             </button>
             <button
-              onClick={() => remove(e.id, e.title)}
+              onClick={() => setPendingDelete({ id: e.id, title: e.title })}
               className="text-xs text-slate-400 hover:text-red-600"
             >
               삭제
@@ -81,6 +83,13 @@ export default function HomePage() {
           </li>
         ))}
       </ul>
+
+      <ConfirmDialog
+        open={!!pendingDelete}
+        message={`"${pendingDelete?.title}" 실험을 삭제할까요? 되돌릴 수 없어요.`}
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={confirmRemove}
+      />
     </main>
   )
 }

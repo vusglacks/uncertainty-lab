@@ -4,11 +4,13 @@ import { getExperiment, saveExperiment } from '../lib/storage'
 import { newBlock, duplicateNames, renameInFormula, isNameUsedElsewhere } from '../lib/blocks'
 import BlockList from '../components/BlockList'
 import AddBlockButton from '../components/AddBlockButton'
+import ConfirmDialog from '../components/ConfirmDialog'
 
 // 편집 화면 — 블록을 위에서 아래로 쌓아 계산한다.
 export default function EditorPage() {
   const { id } = useParams()
   const [exp, setExp] = useState(() => getExperiment(id))
+  const [pendingRemove, setPendingRemove] = useState(null) // { blockId, name } | null
 
   // update()로 실제 편집이 일어났을 때만 저장한다. "마운트 시 한 번은 건너뛴다" 방식은
   // 개발 모드 StrictMode가 effect를 일부러 두 번 실행하면서 깨졌다(두 번째 실행 때 저장돼버림).
@@ -41,10 +43,15 @@ export default function EditorPage() {
   function removeBlock(blockId) {
     const block = exp.blocks.find((b) => b.id === blockId)
     if (block && isNameUsedElsewhere(exp.blocks, block)) {
-      const ok = window.confirm(`"${block.name}" 이름을 다른 블록이 쓰고 있어요. 그래도 삭제할까요?`)
-      if (!ok) return
+      setPendingRemove({ blockId, name: block.name })
+      return
     }
     update({ blocks: exp.blocks.filter((b) => b.id !== blockId) })
+  }
+
+  function confirmRemoveBlock() {
+    update({ blocks: exp.blocks.filter((b) => b.id !== pendingRemove.blockId) })
+    setPendingRemove(null)
   }
 
   function moveBlock(index, dir) {
@@ -122,6 +129,13 @@ export default function EditorPage() {
         />
         <AddBlockButton onAdd={addBlock} />
       </div>
+
+      <ConfirmDialog
+        open={!!pendingRemove}
+        message={`"${pendingRemove?.name}" 이름을 다른 블록이 쓰고 있어요. 그래도 삭제할까요?`}
+        onCancel={() => setPendingRemove(null)}
+        onConfirm={confirmRemoveBlock}
+      />
     </main>
   )
 }
