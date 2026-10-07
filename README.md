@@ -18,7 +18,7 @@ npm test          # 계산 엔진(engine.js) 검증
 
 - **Vite + React** (JavaScript) — 프론트엔드
 - **Tailwind CSS** — 스타일
-- **Vercel** — 배포 (5차시)
+- **Vercel** — 배포 (3차시부터, `main`에 푸시하면 자동 배포)
 - **Supabase** — 로그인·저장 (6차시~)
 
 ## 폴더
