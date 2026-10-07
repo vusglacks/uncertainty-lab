@@ -6,7 +6,7 @@ import GraphBlock from './blocks/GraphBlock'
 const VIEWS = { measure: MeasureBlock, calc: CalcBlock, graph: GraphBlock }
 
 // 블록들을 순서대로 그린다. 각 블록에 이동·삭제 조작을 붙인다.
-export default function BlockList({ blocks, onChange, onMove, onRemove }) {
+export default function BlockList({ blocks, angleUnit, onChange, onMove, onRemove }) {
   if (blocks.length === 0) {
     return (
       <p className="rounded-lg border border-dashed border-slate-300 px-4 py-8 text-center text-sm text-slate-400">
@@ -52,6 +52,8 @@ export default function BlockList({ blocks, onChange, onMove, onRemove }) {
         <View
           block={block}
           namesAbove={namesAbove(blocks, index)}
+          blocksAbove={blocks.slice(0, index)}
+          angleUnit={angleUnit}
           onChange={(patch) => onChange(index, patch)}
         />
       </div>

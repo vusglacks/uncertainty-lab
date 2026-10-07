@@ -1,5 +1,6 @@
 // 실험 목록을 브라우저 localStorage에 저장한다.
-// 6차시에 이 파일만 Supabase 버전으로 바꾸면 화면 코드는 그대로 쓸 수 있다.
+// 1차 버전은 이 방식을 유지한다. 나중에 서버 저장이 필요해지면
+// 이 파일만 바꾸면 화면 코드는 그대로 쓸 수 있다.
 
 const KEY = 'uncertainty-lab:experiments'
 

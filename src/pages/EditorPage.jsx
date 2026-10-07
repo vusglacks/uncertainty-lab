@@ -123,6 +123,7 @@ export default function EditorPage() {
       <div className="mt-6 space-y-3">
         <BlockList
           blocks={exp.blocks}
+          angleUnit={exp.angleUnit}
           onChange={updateBlock}
           onMove={moveBlock}
           onRemove={removeBlock}
