@@ -9,17 +9,21 @@
 
 ```bash
 npm install       # 처음 한 번
+cp .env.example .env   # 처음 한 번 — .env 에 Supabase 주소·키를 채운다 (GitHub에 안 올라감)
 npm run dev       # 개발 서버 (http://localhost:5173)
 npm run build     # 배포용 빌드 → dist/
-npm test          # 계산 코드(engine·stats·calc) 검증
+npm test          # 계산 코드(engine·stats·calc·row) 검증
 ```
+
+`.env`를 고치면 개발 서버를 껐다 다시 켜야 반영된다. 배포(Vercel)에는 같은 이름의 값을
+Settings → Environment Variables에 넣고 Redeploy한다. DB 표는 `supabase/schema.sql`을 SQL Editor에서 실행해 만든다.
 
 ## 기술 스택
 
 - **Vite + React** (JavaScript) — 프론트엔드
 - **Tailwind CSS** — 스타일
 - **Vercel** — 배포 (`main`에 푸시하면 자동 배포)
-- **localStorage** — 1차 버전의 저장 (로그인·서버 저장은 피드백 후 필요하면 검토)
+- **Supabase** — 로그인(이메일+비밀번호)과 실험 저장 (RLS로 내 실험만 접근)
 
 ## 폴더
 

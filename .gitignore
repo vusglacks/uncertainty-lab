@@ -26,3 +26,8 @@ dist-ssr
 # AI 도구 로컬 상태 (사람마다 다름, 커밋 안 함)
 .bkit/
 .claude/
+
+# 환경변수(API 키 등) — 절대 커밋하지 않는다. 값이 빈 예시 파일(.env.example)만 올린다
+.env
+.env.*
+!.env.example

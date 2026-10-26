@@ -1,34 +1,37 @@
-// 실험 목록을 브라우저 localStorage에 저장한다.
-// 1차 버전은 이 방식을 유지한다. 나중에 서버 저장이 필요해지면
-// 이 파일만 바꾸면 화면 코드는 그대로 쓸 수 있다.
+// 실험 저장·불러오기 — Supabase(experiments 표)를 사용한다.
+// 모든 함수가 인터넷을 거치므로 async 이고, 실패하면 Error 를 던진다 (화면에서 잡아서 안내).
+// "내 실험만 보인다"는 규칙은 여기 코드가 아니라 DB의 RLS 정책이 강제한다.
+import { supabase } from './supabase'
+import { rowToExperiment, experimentToRow } from './experimentRow'
 
-const KEY = 'uncertainty-lab:experiments'
-
-// 저장된 실험 전체를 배열로 읽는다. 없거나 깨졌으면 빈 배열.
-export function listExperiments() {
-  try {
-    return JSON.parse(localStorage.getItem(KEY)) ?? []
-  } catch {
-    return []
-  }
+function check(error, 행동) {
+  if (error) throw new Error(`${행동}에 실패했어요: ${error.message}`)
 }
 
-export function getExperiment(id) {
-  return listExperiments().find((e) => e.id === id) ?? null
+// 내 실험 전체 (최근 수정순)
+export async function listExperiments() {
+  const { data, error } = await supabase
+    .from('experiments')
+    .select('*')
+    .order('updated_at', { ascending: false })
+  check(error, '실험 목록을 불러오지')
+  return data.map(rowToExperiment)
 }
 
-// 새 실험이면 추가, 있으면 교체. 수정 시각을 갱신한다.
-export function saveExperiment(exp) {
-  const all = listExperiments()
-  const next = { ...exp, updatedAt: new Date().toISOString() }
-  const i = all.findIndex((e) => e.id === exp.id)
-  if (i === -1) all.push(next)
-  else all[i] = next
-  localStorage.setItem(KEY, JSON.stringify(all))
-  return next
+// 실험 하나. 없거나 내 것이 아니면 null.
+export async function getExperiment(id) {
+  const { data, error } = await supabase.from('experiments').select('*').eq('id', id).maybeSingle()
+  check(error, '실험을 불러오지')
+  return data ? rowToExperiment(data) : null
 }
 
-export function deleteExperiment(id) {
-  const rest = listExperiments().filter((e) => e.id !== id)
-  localStorage.setItem(KEY, JSON.stringify(rest))
+// 새 실험이면 추가, 있으면 덮어쓰기 (upsert). 수정 시각은 저장할 때마다 갱신된다.
+export async function saveExperiment(exp) {
+  const { error } = await supabase.from('experiments').upsert(experimentToRow(exp))
+  check(error, '저장하지')
+}
+
+export async function deleteExperiment(id) {
+  const { error } = await supabase.from('experiments').delete().eq('id', id)
+  check(error, '삭제하지')
 }

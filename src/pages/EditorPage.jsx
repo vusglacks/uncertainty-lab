@@ -6,24 +6,121 @@ import BlockList from '../components/BlockList'
 import AddBlockButton from '../components/AddBlockButton'
 import ConfirmDialog from '../components/ConfirmDialog'
 
-// 편집 화면 — 블록을 위에서 아래로 쌓아 계산한다.
+// 글자를 칠 때마다 서버에 저장하면 낭비라서, 마지막 수정 뒤 이만큼(ms) 조용하면 한 번에 저장한다.
+const SAVE_DELAY = 800
+
+// 편집 화면 — 블록을 위에서 아래로 쌓아 계산한다. 원본(제목·블록)만 서버에 자동 저장한다.
 export default function EditorPage() {
   const { id } = useParams()
-  const [exp, setExp] = useState(() => getExperiment(id))
+  const [exp, setExp] = useState(null)
+  const [loadState, setLoadState] = useState('loading') // 'loading' | 'ready' | 'notfound' | 'error'
+  const [loadError, setLoadError] = useState('')
+  const [loadTry, setLoadTry] = useState(0)
+  const [saveState, setSaveState] = useState('saved') // 'saved' | 'dirty' | 'saving' | 'error'
+  const [saveError, setSaveError] = useState('')
   const [pendingRemove, setPendingRemove] = useState(null) // { blockId, name } | null
 
-  // update()로 실제 편집이 일어났을 때만 저장한다. "마운트 시 한 번은 건너뛴다" 방식은
-  // 개발 모드 StrictMode가 effect를 일부러 두 번 실행하면서 깨졌다(두 번째 실행 때 저장돼버림).
-  // 그래서 "마운트 여부"가 아니라 "실제로 고쳤는지"를 직접 기록한다.
-  const dirty = useRef(false)
+  // 저장 관련 값은 화면을 다시 그릴 필요가 없어서 ref 에 둔다.
+  const latest = useRef(null) // 가장 최근 실험 내용
+  const dirty = useRef(false) // 아직 저장 안 된 수정이 있는지
+  const inFlight = useRef(false) // 지금 저장 요청이 진행 중인지
+  const timer = useRef(null)
+
+  // 실험 불러오기
   useEffect(() => {
-    if (dirty.current && exp) saveExperiment(exp)
+    let cancelled = false
+    getExperiment(id)
+      .then((e) => {
+        if (cancelled) return
+        if (e) {
+          setExp(e)
+          setLoadState('ready')
+        } else {
+          setLoadState('notfound')
+        }
+      })
+      .catch((err) => {
+        if (cancelled) return
+        setLoadError(err.message)
+        setLoadState('error')
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [id, loadTry])
+
+  useEffect(() => {
+    latest.current = exp
   }, [exp])
 
-  if (!exp) {
+  // 저장하지 않은 수정을 서버에 보낸다. 이미 저장 중이면 끝난 뒤에 다시 확인한다.
+  async function flush() {
+    clearTimeout(timer.current)
+    if (inFlight.current || !dirty.current || !latest.current) return
+    inFlight.current = true
+    dirty.current = false
+    setSaveState('saving')
+    try {
+      await saveExperiment(latest.current)
+    } catch (e) {
+      dirty.current = true
+      inFlight.current = false
+      setSaveError(e.message)
+      setSaveState('error')
+      return
+    }
+    inFlight.current = false
+    if (dirty.current) {
+      schedule() // 저장하는 동안 또 고쳤다면 한 번 더
+    } else {
+      setSaveState('saved')
+    }
+  }
+
+  function schedule() {
+    clearTimeout(timer.current)
+    timer.current = setTimeout(flush, SAVE_DELAY)
+  }
+
+  // 화면을 떠날 때(목록으로 이동 등) 아직 안 보낸 수정이 있으면 바로 저장한다.
+  useEffect(() => {
+    return () => {
+      clearTimeout(timer.current)
+      if (dirty.current && !inFlight.current) flush()
+    }
+  }, [])
+
+  // 저장 전에 탭을 닫으려 하면 브라우저가 경고하게 한다.
+  useEffect(() => {
+    function warn(e) {
+      if (dirty.current || inFlight.current) e.preventDefault()
+    }
+    window.addEventListener('beforeunload', warn)
+    return () => window.removeEventListener('beforeunload', warn)
+  }, [])
+
+  if (loadState === 'loading') {
+    return <p className="px-6 py-12 text-center text-sm text-slate-400">불러오는 중…</p>
+  }
+
+  if (loadState === 'error') {
+    return (
+      <main className="mx-auto max-w-3xl px-6 py-12 text-sm">
+        <p className="rounded-lg bg-amber-50 px-3 py-2 text-amber-800">{loadError}</p>
+        <button onClick={() => { setLoadState('loading'); setLoadTry((n) => n + 1) }} className="mt-3 underline">
+          다시 시도
+        </button>
+        <Link to="/" className="ml-4 text-slate-500 underline">
+          목록으로
+        </Link>
+      </main>
+    )
+  }
+
+  if (loadState === 'notfound') {
     return (
       <main className="mx-auto max-w-3xl px-6 py-12">
-        <p className="text-sm text-slate-500">실험을 찾을 수 없어요.</p>
+        <p className="text-sm text-slate-500">실험을 찾을 수 없어요. (내 계정의 실험이 아니거나 삭제됐을 수 있어요)</p>
         <Link to="/" className="text-sm text-slate-900 underline">
           목록으로
         </Link>
@@ -31,9 +128,12 @@ export default function EditorPage() {
     )
   }
 
+  // 모든 수정은 여기를 거친다: 수정 표시를 남기고 저장 예약을 건다.
   const update = (patch) => {
     dirty.current = true
+    setSaveState('dirty')
     setExp((prev) => ({ ...prev, ...patch }))
+    schedule()
   }
 
   function addBlock(type) {
@@ -88,12 +188,10 @@ export default function EditorPage() {
           ← 목록
         </Link>
         <span className="text-slate-300">|</span>
-        <Link
-          to={`/exp/${exp.id}/export`}
-          className="text-slate-400 hover:text-slate-700"
-        >
+        <Link to={`/exp/${exp.id}/export`} className="text-slate-400 hover:text-slate-700">
           내보내기
         </Link>
+        <SaveStatus state={saveState} error={saveError} onRetry={flush} />
       </div>
 
       <input
@@ -139,4 +237,20 @@ export default function EditorPage() {
       />
     </main>
   )
+}
+
+// 화면 위쪽에 보이는 저장 상태 표시
+function SaveStatus({ state, error, onRetry }) {
+  if (state === 'error') {
+    return (
+      <span className="ml-auto text-xs text-amber-700">
+        저장 실패 — {error}{' '}
+        <button onClick={onRetry} className="underline">
+          다시 시도
+        </button>
+      </span>
+    )
+  }
+  const label = { saved: '저장됨', dirty: '저장 대기…', saving: '저장 중…' }[state]
+  return <span className="ml-auto text-xs text-slate-400">{label}</span>
 }
