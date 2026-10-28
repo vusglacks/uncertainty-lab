@@ -51,7 +51,7 @@ export default function ExportPage() {
   const hasCalc = report.calc.length > 1
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-10">
+    <main className="mx-auto max-w-5xl px-6 py-10">
       <Link to={`/exp/${id}`} className="text-sm text-slate-400 hover:text-slate-700">
         ← 편집으로
       </Link>
@@ -113,7 +113,7 @@ function Section({ title, rows }) {
           <thead className="bg-slate-50 text-left text-slate-500">
             <tr>
               {head.map((h) => (
-                <th key={h} className="whitespace-nowrap border-b border-slate-200 px-3 py-2 font-medium">
+                <th key={h} className="border-b border-slate-200 px-2 py-2 font-medium">
                   {h}
                 </th>
               ))}
@@ -123,7 +123,7 @@ function Section({ title, rows }) {
             {body.map((row, i) => (
               <tr key={i} className="border-b border-slate-100 last:border-0">
                 {row.map((c, j) => (
-                  <td key={j} className="whitespace-nowrap px-3 py-2 font-mono text-slate-800">
+                  <td key={j} className="whitespace-nowrap px-2 py-2 font-mono text-slate-800">
                     {c}
                   </td>
                 ))}
