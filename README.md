@@ -12,7 +12,7 @@ npm install       # 처음 한 번
 cp .env.example .env   # 처음 한 번 — .env 에 Supabase 주소·키를 채운다 (GitHub에 안 올라감)
 npm run dev       # 개발 서버 (http://localhost:5173)
 npm run build     # 배포용 빌드 → dist/
-npm test          # 계산 코드(engine·stats·calc·row) 검증
+npm test          # 계산 코드(engine·stats·calc·graph·report·row) 검증
 ```
 
 `.env`를 고치면 개발 서버를 껐다 다시 켜야 반영된다. 배포(Vercel)에는 같은 이름의 값을
@@ -32,11 +32,17 @@ src/
   lib/engine.js     수식 파서 + 자동 미분 + 불확도 전파 (직접 구현, 라이브러리 X)
   lib/stats.js      측정값 평균·표본표준편차·A형/B형/합성 불확도
   lib/calc.js       계산 블록과 engine.js 연결
+  lib/regression.js 추세선 6종(직선·원점·2차·거듭제곱·지수·로그), R², 표준오차
+  lib/graph.js      그래프 자료(점·오차막대·추세선)와 축 눈금
+  lib/report.js     내보내기용 표와 그래프 자료
   App.jsx           화면
 test/
   engine.test.js    engine.js 검증 (21개)
   stats.test.js     측정 통계 검증 (33개)
   calc.test.js      계산 블록 연결 검증 (22개)
+  graph.test.js     추세선·그래프 자료 검증 (91개)
+  report.test.js    내보내기 표 검증 (16개)
+  row.test.js       DB 변환 검증 (9개)
 docs/
   구조.md            화면·블록 구조 확정본
 ```

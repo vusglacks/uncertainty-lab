@@ -8,7 +8,7 @@
     "build": "vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "test": "node test/engine.test.js && node test/stats.test.js && node test/calc.test.js && node test/row.test.js"
+    "test": "node test/engine.test.js && node test/stats.test.js && node test/calc.test.js && node test/row.test.js && node test/graph.test.js && node test/report.test.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.118.0",

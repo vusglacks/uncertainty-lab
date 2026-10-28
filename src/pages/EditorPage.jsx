@@ -162,16 +162,22 @@ export default function EditorPage() {
     update({ blocks: next })
   }
 
-  // 블록 한 개를 수정. 이름이 바뀌면 아래 계산 블록의 수식도 함께 고친다.
+  // 블록 한 개를 수정. 이름이 바뀌면 아래 계산 블록의 수식과 그래프 블록의 축 이름도 함께 고친다.
+  // 이름을 지워서 빈 칸이 된 순간에는 따라 바꾸지 않는다. (바꾸면 수식에서 이름이 사라져 버린다.
+  // 이 경우 수식은 옛 이름 그대로 두고, "존재하지 않는 이름" 경고가 뜬다)
   function updateBlock(index, patch) {
     const prev = exp.blocks[index]
     const next = exp.blocks.map((b, i) => (i === index ? { ...b, ...patch } : b))
-    if ('name' in patch && patch.name !== prev.name && prev.name) {
+    if ('name' in patch && patch.name !== prev.name && prev.name && patch.name.trim()) {
       for (let i = index + 1; i < next.length; i++) {
-        if (next[i].type === 'calc') {
+        const b = next[i]
+        if (b.type === 'calc') {
+          next[i] = { ...b, formula: renameInFormula(b.formula, prev.name, patch.name) }
+        } else if (b.type === 'graph') {
           next[i] = {
-            ...next[i],
-            formula: renameInFormula(next[i].formula, prev.name, patch.name),
+            ...b,
+            xName: b.xName === prev.name ? patch.name : b.xName,
+            yName: b.yName === prev.name ? patch.name : b.yName,
           }
         }
       }
