@@ -1,10 +1,11 @@
 // ============================================================
 //  그래프 블록의 자료 만들기 (화면 코드와 분리한 순수 함수들)
-//  1) buildGraph : x축·y축으로 고른 측정 블록 -> 점 목록, 오차막대, 추세선
+//  1) buildGraph : x축·y축으로 고른 블록(측정 블록 또는 계산 블록) -> 점 목록, 오차막대, 추세선
 //  2) niceTicks  : 축에 찍을 "깔끔한" 눈금 (0, 2, 4, 6 … 처럼)
 //  3) axisDomain : 점과 오차막대가 모두 들어가는 축 범위
 // ============================================================
 import { measureStats } from './stats.js'
+import { evaluateRows } from './calc.js'
 import { fitCurve } from './regression.js'
 
 function fail(message) {
@@ -12,58 +13,78 @@ function fail(message) {
 }
 
 // 같은 이름이 여럿이면 가장 가까운(바로 위쪽) 블록을 쓴다. 계산 블록과 같은 규칙.
-function nearestAbove(blocksAbove, name) {
-  return [...blocksAbove].reverse().find((b) => b.name === name)
+// 반환: 위치(index), 없으면 -1
+function nearestIndex(blocksAbove, name) {
+  for (let i = blocksAbove.length - 1; i >= 0; i--) if (blocksAbove[i].name === name) return i
+  return -1
 }
 
 function label(block) {
   return block.unit ? `${block.name} (${block.unit})` : block.name
 }
 
+// 축 하나가 내놓는 "행 목록"을 만든다. 행 하나 = { value, u } (값과 그 점의 불확도)
+//   측정 블록: 측정값 하나하나가 행. 불확도는 B형 불확도(입력했을 때만, 아니면 0)
+//   계산 블록: 측정 블록의 i번째 값끼리 식을 계산한 행별 값. 불확도는 B형 불확도를 식에 따라 전파한 값
+// 반환: { ok:false, message } 또는 { ok:true, rows, label, warnings }
+function axisRows(축, name, blocksAbove, angleUnit) {
+  const index = nearestIndex(blocksAbove, name)
+  if (index < 0) return fail(`${축}축 '${name}' 이름의 블록이 위쪽에 없어요`)
+  const b = blocksAbove[index]
+
+  if (b.type === 'measure') {
+    const s = measureStats(b)
+    if (s.typeBError) return fail(`${축}축 '${name}' 측정 블록의 ${s.typeBError}`)
+    if (s.n === 0) return fail(`${축}축 '${name}' 측정 블록에 측정값이 없어요`)
+    const u = s.uBGiven ? s.uB : 0
+    return { ok: true, rows: s.values.map((v) => ({ value: v, u })), label: label(b), warnings: [] }
+  }
+
+  if (b.type === 'calc') {
+    // 계산 블록은 자기보다 위쪽 블록만 쓸 수 있으므로, 그 위치까지 잘라서 계산한다.
+    const r = evaluateRows(b.formula, blocksAbove.slice(0, index), angleUnit)
+    if (r.empty) return fail(`${축}축 '${name}' 계산 블록에 수식이 없어요`)
+    if (!r.ok) return fail(`${축}축 '${name}' 계산 블록: ${r.message}`)
+    return { ok: true, rows: r.rows, label: label(b), warnings: r.warnings.map((w) => `${name}: ${w}`) }
+  }
+
+  return fail(`${축}축 '${name}' 은(는) 그래프 축으로 쓸 수 없는 블록이에요`)
+}
+
 // 그래프 블록 하나의 자료를 만든다.
 //   block       : { xName, yName, fit }  (fit: 'none' | 'linear' | 'origin' | 'quadratic' | 'power' | 'exponential' | 'log')
 //   blocksAbove : 이 그래프 블록보다 위에 있는 블록들
+//   angleUnit   : 'deg' | 'rad'  (축으로 고른 계산 블록의 삼각함수에 쓴다)
 //
-// 점은 x축 블록과 y축 블록의 "같은 순서의 값"끼리 짝지어 만든다.
-//   (x블록의 i번째 값, y블록의 i번째 값)  — 예) 길이를 바꿔 가며 잰 값들과 그때의 주기들
-// 오차막대는 각 블록에 입력한 B형 불확도(기기 최소눈금 등)를 모든 점에 같게 쓴다.
+// 점은 x축과 y축의 "같은 순서의 행"끼리 짝지어 만든다.
+//   (x축의 i번째 값, y축의 i번째 값)  — 예) 길이를 바꿔 가며 잰 값들과 그때의 주기들
+// 오차막대는 각 점의 불확도다. 측정 블록은 B형 불확도를 모든 점에 같게,
+// 계산 블록은 B형 불확도를 식에 따라 전파한 값을 점마다 쓴다.
 //
 // 반환
 //   아직 축을 안 골랐으면  { ok: false, empty: true, message }
 //   실패하면               { ok: false, message }
 //   성공하면 { ok: true, points:[{x,y,ux,uy}], xLabel, yLabel, hasXErr, hasYErr,
 //              fit: fitCurve 결과 | null, fitMessage, warnings:[...] }
-export function buildGraph(block, blocksAbove) {
+export function buildGraph(block, blocksAbove, angleUnit = 'deg') {
   if (!block.xName || !block.yName) {
     return { ok: false, empty: true, message: 'x축과 y축을 고르면 그래프가 그려져요.' }
   }
 
-  const axes = []
-  for (const [축, name] of [['x', block.xName], ['y', block.yName]]) {
-    const b = nearestAbove(blocksAbove, name)
-    if (!b) return fail(`${축}축 '${name}' 이름의 블록이 위쪽에 없어요`)
-    if (b.type !== 'measure') {
-      return fail(`${축}축 '${name}' 은(는) 계산 블록이에요. 그래프 축에는 측정 블록(측정값 목록)만 쓸 수 있어요`)
-    }
-    const s = measureStats(b)
-    if (s.typeBError) return fail(`${축}축 '${name}' 측정 블록의 ${s.typeBError}`)
-    if (s.n === 0) return fail(`${축}축 '${name}' 측정 블록에 측정값이 없어요`)
-    axes.push({ block: b, stats: s })
-  }
-  const [X, Y] = axes
+  const X = axisRows('x', block.xName, blocksAbove, angleUnit)
+  if (!X.ok) return X
+  const Y = axisRows('y', block.yName, blocksAbove, angleUnit)
+  if (!Y.ok) return Y
 
-  const warnings = []
-  const n = Math.min(X.stats.n, Y.stats.n)
-  if (X.stats.n !== Y.stats.n) {
-    warnings.push(`x값은 ${X.stats.n}개, y값은 ${Y.stats.n}개라서 앞에서부터 ${n}쌍만 그렸어요`)
+  const warnings = [...X.warnings, ...Y.warnings]
+  const n = Math.min(X.rows.length, Y.rows.length)
+  if (X.rows.length !== Y.rows.length) {
+    warnings.push(`x값은 ${X.rows.length}개, y값은 ${Y.rows.length}개라서 앞에서부터 ${n}쌍만 그렸어요`)
   }
 
-  // B형 불확도를 입력한 축에만 오차막대를 그린다.
-  const ux = X.stats.uBGiven ? X.stats.uB : 0
-  const uy = Y.stats.uBGiven ? Y.stats.uB : 0
   const points = []
   for (let i = 0; i < n; i++) {
-    points.push({ x: X.stats.values[i], y: Y.stats.values[i], ux, uy })
+    points.push({ x: X.rows[i].value, y: Y.rows[i].value, ux: X.rows[i].u, uy: Y.rows[i].u })
   }
 
   let fit = null
@@ -82,12 +103,12 @@ export function buildGraph(block, blocksAbove) {
   return {
     ok: true,
     points,
-    xLabel: label(X.block),
-    yLabel: label(Y.block),
-    xName: X.block.name,
-    yName: Y.block.name,
-    hasXErr: ux > 0,
-    hasYErr: uy > 0,
+    xLabel: X.label,
+    yLabel: Y.label,
+    xName: block.xName,
+    yName: block.yName,
+    hasXErr: points.some((p) => p.ux > 0),
+    hasYErr: points.some((p) => p.uy > 0),
     fit,
     fitMessage,
     warnings,

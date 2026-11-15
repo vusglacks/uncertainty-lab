@@ -2,18 +2,23 @@ import GraphView from '../GraphView'
 import { buildGraph } from '../../lib/graph'
 import { FIT_LABELS } from '../../lib/regression'
 
-// 그래프 블록 — x축·y축 측정 블록을 고르면 오차막대·추세선·결정계수가 있는 그래프를 그린다.
-// 점은 두 블록의 "같은 순서의 값"끼리 짝지어 만든다. 계산은 lib/graph.js, lib/regression.js.
-export default function GraphBlock({ block, namesAbove, blocksAbove, onChange }) {
-  // 축으로 고를 수 있는 것: 위쪽의 측정 블록 이름 (여러 값을 가진 블록만 점이 된다)
+// 그래프 블록 — x축·y축 블록을 고르면 오차막대·추세선·결정계수가 있는 그래프를 그린다.
+// 축에는 측정 블록(측정값 목록)과 계산 블록(행별로 계산한 값 목록)을 쓸 수 있다.
+// 점은 두 축의 "같은 순서의 값"끼리 짝지어 만든다. 계산은 lib/graph.js, lib/regression.js.
+export default function GraphBlock({ block, namesAbove, blocksAbove, angleUnit, onChange }) {
+  // 축으로 고를 수 있는 것: 위쪽의 측정 블록과 계산 블록 이름
   const axisOptions = [
     '',
-    ...new Set(blocksAbove.filter((b) => b.type === 'measure' && b.name && b.name.trim()).map((b) => b.name)),
+    ...new Set(
+      blocksAbove
+        .filter((b) => (b.type === 'measure' || b.type === 'calc') && b.name && b.name.trim())
+        .map((b) => b.name),
+    ),
   ]
   // 골라둔 이름이 이름 바뀜/순서 바뀜으로 더 이상 위 블록에 없는지.
   const xMissing = block.xName && !namesAbove.includes(block.xName)
   const yMissing = block.yName && !namesAbove.includes(block.yName)
-  const model = buildGraph(block, blocksAbove)
+  const model = buildGraph(block, blocksAbove, angleUnit)
 
   const select = (label, field) => (
     <label className="flex flex-col gap-1">
@@ -64,7 +69,7 @@ export default function GraphBlock({ block, namesAbove, blocksAbove, onChange })
       <GraphView model={model} />
 
       <p className="text-xs text-slate-400">
-        점은 x축·y축 블록의 같은 순서 값끼리 짝지어요. 오차막대는 각 블록의 B형 불확도예요.
+        점은 x축·y축의 같은 순서 값끼리 짝지어요. 오차막대는 B형 불확도예요 (계산 블록은 식에 따라 전파한 값).
       </p>
     </div>
   )

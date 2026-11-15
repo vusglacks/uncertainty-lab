@@ -39,7 +39,7 @@ export default function GraphView({ model }) {
       <p className="text-xs text-slate-500">
         점 {points.length}개
         {model.hasXErr || model.hasYErr
-          ? ` · 오차막대: ${[model.hasXErr && 'x축 B형 불확도', model.hasYErr && 'y축 B형 불확도'].filter(Boolean).join(', ')}`
+          ? ` · 오차막대: ${[model.hasXErr && 'x축 불확도', model.hasYErr && 'y축 불확도'].filter(Boolean).join(', ')}`
           : ' · 오차막대를 보려면 측정 블록에 B형 불확도를 입력하세요'}
       </p>
 

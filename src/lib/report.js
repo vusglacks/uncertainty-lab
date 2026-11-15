@@ -64,7 +64,7 @@ export function buildReport(blocks, angleUnit) {
     graphs.push({
       id: b.id,
       title: `그래프 ${graphs.length + 1}`,
-      model: buildGraph(b, blocks.slice(0, i)),
+      model: buildGraph(b, blocks.slice(0, i), angleUnit),
     })
   })
   return { measure: measureRows(blocks), calc: calcRows(blocks, angleUnit), graphs }

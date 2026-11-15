@@ -74,7 +74,10 @@ console.log('\n[4] 오류와 빈 수식')
   ok('불확도 정보 없음(값 1개, B형 없음)', evaluateCalc('L', [measure('L', '5')], 'deg').ok === false)
   ok('B형 입력 오류', evaluateCalc('L', [measure('L', '1\n2', 'abc')], 'deg').ok === false)
   const withCalc = [measure('L', '1\n2\n3'), { id: 'g', type: 'calc', name: 'g', formula: 'L' }]
-  ok('계산 블록 이름은 수식에 못 씀', evaluateCalc('g*2', withCalc, 'deg').ok === false)
+  // (예전에는 계산 블록 이름을 수식에 못 썼지만, 이제는 그 식으로 펼쳐서 쓴다 — 자세한 검증은 chain.test.js)
+  ok('계산 블록 이름도 수식에 쓸 수 있다', evaluateCalc('g*2', withCalc, 'deg').ok === true)
+  const g2 = [{ id: 'q', type: 'graph', name: 'q' }]
+  ok('그래프 블록 이름은 수식에 못 씀', evaluateCalc('q*2', g2, 'deg').ok === false)
   const c = evaluateCalc('2^3^2', [], 'deg')
   ok('변수 없는 수식도 계산 (2^3^2 = 512)', c.ok && c.value === 512 && c.terms.length === 0)
 }
