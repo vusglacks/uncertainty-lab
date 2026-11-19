@@ -11,7 +11,7 @@ export const BLOCK_LABELS = {
 // 새 블록 한 개를 기본값과 함께 만든다.
 export function newBlock(type) {
   const base = { id: uid(), type, name: '' }
-  if (type === 'measure') return { ...base, unit: '', rawText: '', typeB: '' }
+  if (type === 'measure') return { ...base, unit: '', rawText: '', typeB: '', bFactors: [] }
   if (type === 'calc') return { ...base, formula: '' }
   if (type === 'graph') return { ...base, name: undefined, xName: '', yName: '', fit: 'linear' }
   throw new Error('알 수 없는 블록 종류: ' + type)

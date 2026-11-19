@@ -48,6 +48,7 @@ test/
   symbolic.test.js  기호 미분을 자동 미분과 대조 (41개)
   explain.test.js   계산 과정(편미분·항·기여율) 검증 (32개)
   funcs.test.js     새 함수·도 단위 역삼각함수 검증 (68개)
+  bfactors.test.js  B형 요인 환산·합성 검증 (43개)
   row.test.js       DB 변환 검증 (9개)
 docs/
   구조.md            화면·블록 구조 확정본

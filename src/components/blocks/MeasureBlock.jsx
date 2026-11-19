@@ -1,5 +1,6 @@
 import { measureStats, formatNumber } from '../../lib/stats'
 import { formatResult } from '../../lib/engine'
+import BFactorsEditor from '../BFactorsEditor'
 
 // 측정 블록 — 반복 측정값을 붙여넣으면 평균·표준편차·A형 불확도를 계산해 보여준다.
 // 계산은 lib/stats.js 의 함수들이 하고, 이 파일은 입력칸과 결과 표시만 맡는다.
@@ -47,7 +48,7 @@ export default function MeasureBlock({ block, onChange }) {
       )}
 
       <label className="flex flex-col gap-1">
-        <span className="text-slate-500">B형 표준불확도 (기기 최소눈금 등, 없으면 비워두기)</span>
+        <span className="text-slate-500">B형 표준불확도 (이미 표준불확도인 값을 직접 입력, 없으면 비워두기)</span>
         <input
           value={block.typeB}
           onChange={(e) => onChange({ typeB: e.target.value })}
@@ -55,6 +56,12 @@ export default function MeasureBlock({ block, onChange }) {
           className="w-40 rounded border border-slate-300 px-2 py-1 font-mono"
         />
       </label>
+
+      <BFactorsEditor
+        factors={block.bFactors ?? []}
+        parsed={s.bFactors}
+        onChange={(bFactors) => onChange({ bFactors })}
+      />
 
       {s.typeBError && (
         <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">{s.typeBError}</p>
@@ -78,6 +85,14 @@ export default function MeasureBlock({ block, onChange }) {
               unit={s.uA === null ? '' : block.unit}
             />
             {s.uBGiven && <Row label="B형 u_B" value={formatNumber(s.uB)} unit={block.unit} />}
+            {s.uBGiven && (s.bFactors.some((f) => f.used) && (s.bDirect !== null || s.bFactors.filter((f) => f.used).length > 1)) && (
+              <Row
+                label="  └ u_B = √(Σu²)"
+                value={`√(${[...(s.bDirect !== null ? [s.bDirect] : []), ...s.bFactors.filter((f) => f.used).map((f) => f.u)]
+                  .map((x) => `${formatNumber(x)}²`)
+                  .join(' + ')})`}
+              />
+            )}
             {s.uC !== null && (
               <Row label="합성 u_c = √(u_A²+u_B²)" value={formatNumber(s.uC)} unit={block.unit} strong />
             )}

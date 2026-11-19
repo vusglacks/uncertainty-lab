@@ -66,6 +66,75 @@ export function parseTypeB(text) {
   return { value: Number(t), given: true, error: null }
 }
 
+// ---------- B형 요인 ----------
+// B형 불확도는 보통 여러 요인이 합쳐진 것이다 (눈금을 읽는 한계, 기기 자체의 오차, 교정 성적서 …).
+// 요인마다 "표준불확도 u" 로 바꿔서 제곱합의 루트로 합친다: u_B = √(u₁² + u₂² + …)
+//
+// 요인 종류와 표준불확도로 바꾸는 방법 (GUM 의 관례)
+//   resolution  분해능 δ (눈금 한 칸). 읽을 때 ±δ/2 안에서 고르게 퍼진다고 보고 u = (δ/2)/√3 = δ/(2√3)
+//   rect        기기 오차한계 ±a. 범위 안에서 고르게 퍼짐(직사각형 분포)이라고 보고 u = a/√3
+//   tri         기기 오차한계 ±a. 가운데에 몰려 있음(삼각 분포)이라고 보고 u = a/√6
+//   ext         교정 성적서의 확장불확도 U 와 포함인자 k (보통 k = 2). u = U/k
+//   std         이미 표준불확도인 값. u 그대로
+export const B_KINDS = [
+  { id: 'resolution', label: '분해능', valueLabel: '분해능 δ (눈금 한 칸)', formula: 'u = δ / (2√3)', convert: (v) => v / (2 * Math.sqrt(3)) },
+  { id: 'rect', label: '기기 오차한계 (직사각형)', valueLabel: '오차한계 ±a', formula: 'u = a / √3', convert: (v) => v / Math.sqrt(3) },
+  { id: 'tri', label: '기기 오차한계 (삼각)', valueLabel: '오차한계 ±a', formula: 'u = a / √6', convert: (v) => v / Math.sqrt(6) },
+  { id: 'ext', label: '확장불확도 (성적서)', valueLabel: '확장불확도 U', formula: 'u = U / k', convert: (v, k) => v / k },
+  { id: 'std', label: '표준불확도 (직접)', valueLabel: '표준불확도 u', formula: 'u = 입력값', convert: (v) => v },
+]
+const KIND_BY_ID = Object.fromEntries(B_KINDS.map((k) => [k.id, k]))
+export const DEFAULT_K = 2
+
+// B형 요인 목록을 해석한다.
+//   factors: [{ id, label, kind, value, k }]  (value, k 는 입력한 글자 그대로)
+// 값 칸이 비어 있는 요인은 "아직 안 쓴 줄"로 보고 건너뛴다.
+// 반환: { list, given, u, error }
+//   list : [{ ...요인, u, used }]  요인마다 표준불확도 u (안 쓴 줄은 used:false)
+//   given: 쓴 요인이 하나라도 있는지
+//   u    : 합성 √(Σu²)
+//   error: 잘못 입력한 요인이 있으면 어느 요인인지 알려주는 메시지
+export function parseBFactors(factors) {
+  const list = []
+  let error = null
+  let sumSq = 0
+  let given = false
+  for (const f of Array.isArray(factors) ? factors : []) {
+    const name = f.label?.trim() || KIND_BY_ID[f.kind]?.label || 'B형 요인'
+    const text = String(f.value ?? '').trim()
+    if (text === '') {
+      list.push({ ...f, u: 0, used: false })
+      continue
+    }
+    const kind = KIND_BY_ID[f.kind]
+    if (!kind) {
+      error ??= `B형 요인 '${name}' 의 종류를 알 수 없어요`
+      list.push({ ...f, u: 0, used: false })
+      continue
+    }
+    if (!NUMBER_RE.test(text) || Number(text) < 0) {
+      error ??= `B형 요인 '${name}' 의 값은 0 이상의 숫자로 입력하세요`
+      list.push({ ...f, u: 0, used: false })
+      continue
+    }
+    let k = 1
+    if (f.kind === 'ext') {
+      const kt = String(f.k ?? '').trim()
+      k = kt === '' ? DEFAULT_K : Number(kt)
+      if (kt !== '' && (!NUMBER_RE.test(kt) || !(k > 0))) {
+        error ??= `B형 요인 '${name}' 의 포함인자 k 는 0보다 큰 숫자로 입력하세요`
+        list.push({ ...f, u: 0, used: false })
+        continue
+      }
+    }
+    const u = kind.convert(Number(text), k)
+    sumSq += u * u
+    given = true
+    list.push({ ...f, u, used: true })
+  }
+  return { list, given, u: Math.sqrt(sumSq), error }
+}
+
 // 합성표준불확도 u_c = √(u_A² + u_B²)
 // A형과 B형이 서로 독립이라고 보고 제곱해서 더한 뒤 루트를 씌운다.
 export function combinedUncertainty(uA, uB) {
@@ -78,8 +147,10 @@ export function combinedUncertainty(uA, uB) {
 //   std       : 표본표준편차 (n<2 이면 null)
 //   uA        : A형 표준불확도 (n<2 이면 null)
 //   uB        : B형 표준불확도 (입력 안 했으면 0)
-//   uBGiven   : B형을 입력했는지
-//   typeBError: B형 입력이 잘못됐을 때 메시지
+//                 직접 입력한 B형(typeB)과 B형 요인들을 √(제곱합)으로 합친 값
+//   uBGiven   : B형을 입력했는지 (직접 입력 또는 요인)
+//   typeBError: B형 입력이 잘못됐을 때 메시지 (직접 입력 또는 요인)
+//   bFactors  : B형 요인별 표준불확도 목록 (화면 표시용)
 //   uC        : 합성표준불확도 (계산할 수 없으면 null)
 //     - A형·B형 둘 다 있으면 √(uA²+uB²)
 //     - A형만 있으면 uA (uB = 0)
@@ -87,8 +158,15 @@ export function combinedUncertainty(uA, uB) {
 //     - 그 외(불확도 정보가 전혀 없음, B형 입력 오류)는 null
 export function measureStats(block) {
   const { values, invalid } = parseValues(block.rawText)
-  const b = parseTypeB(block.typeB)
+  const direct = parseTypeB(block.typeB) // 예전부터 있던 "B형 표준불확도" 한 칸
+  const f = parseBFactors(block.bFactors) // 새로 나눠 입력하는 B형 요인들 (없으면 빈 목록)
   const uA = typeAUncertainty(values)
+
+  const b = {
+    value: Math.sqrt(direct.value ** 2 + f.u ** 2), // 직접 입력과 요인들도 서로 독립이라 제곱해서 합친다
+    given: direct.given || f.given,
+    error: direct.error || f.error,
+  }
 
   let uC = null
   if (!b.error) {
@@ -106,6 +184,8 @@ export function measureStats(block) {
     uB: b.value,
     uBGiven: b.given,
     typeBError: b.error,
+    bDirect: direct.given ? direct.value : null, // 직접 입력한 B형 (없으면 null)
+    bFactors: f.list,
     uC,
   }
 }
