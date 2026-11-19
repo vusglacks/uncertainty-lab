@@ -78,6 +78,9 @@ u_c(f) = √( Σ ( ∂f/∂xᵢ · u(xᵢ) )² )
 
 각도 단위(도/라디안) 선택을 지원한다. 도 단위일 때는 삼각함수 **안에 들어가는 변수만**
 라디안으로 변환한다. 값과 불확도를 함께 변환해야 한다.
+`asin/acos/atan` 은 도 단위일 때 **결과를 도(°)로 변환**하고 미분에도 같은 계수(180/π)를 곱한다.
+도 단위에서 `sin(asin(x))` 처럼 역삼각함수의 결과를 삼각함수 안에 바로 넣으면 단위가 섞여 틀리므로
+조용히 틀린 값을 내는 대신 오류로 안내한다.
 
 ## 이미 만들어 둔 것
 
@@ -91,8 +94,12 @@ u_c(f) = √( Σ ( ∂f/∂xᵢ · u(xᵢ) )² )
 - `formatResult` : 유효숫자 처리
 - `numericPartials` : 중앙 차분 수치 미분 — 자동 미분이 맞는지 검증할 때 쓴다
 
+5차시에 함수(`sinh cosh tanh log2 cbrt`)와 도 단위 역삼각함수를 추가했다. 편미분을 **식**으로 보여주는 기호 미분은
+`lib/symbolic.js` 가 따로 하고(engine.js 의 자동 미분 값과 숫자로 대조해 검증), engine.js 의 나머지는 그대로다.
+
 지원 연산: `+ - * / ^`, 괄호, 단항 마이너스, 거듭제곱 우결합
-지원 함수: `sin cos tan asin acos atan exp ln log sqrt abs`
+지원 함수: `sin cos tan asin acos atan sinh cosh tanh exp ln log log2 sqrt cbrt abs`
+(`ln` = 자연로그, `log` = **상용로그(밑 10)**, `log2` = 밑 2)
 상수: `pi`, `e`
 
 ## 기술 스택

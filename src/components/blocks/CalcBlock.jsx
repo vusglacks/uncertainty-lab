@@ -3,6 +3,7 @@ import { evaluateCalc, evaluateRows } from '../../lib/calc'
 import { formatResult } from '../../lib/engine'
 import { formatNumber } from '../../lib/stats'
 import ExplainTable from '../ExplainTable'
+import { FUNCTION_GROUPS, FUNCTION_SUMMARY } from '../../lib/functions'
 
 // 행별 값 목록에서 화면에 보여줄 최대 행 수 (나머지는 "…"로 줄인다)
 const MAX_SHOWN_ROWS = 12
@@ -39,6 +40,19 @@ export default function CalcBlock({ block, namesAbove, blocksAbove, angleUnit, o
           />
         </label>
       </div>
+
+      <details className="text-xs text-slate-400">
+        <summary className="cursor-pointer select-none">{FUNCTION_SUMMARY}</summary>
+        <ul className="mt-1 space-y-0.5 pl-4">
+          {FUNCTION_GROUPS.map((g) => (
+            <li key={g.title}>
+              <span className="text-slate-500">{g.title}</span>{' '}
+              <span className="font-mono text-slate-600">{g.names.join(' ')}</span>
+              {g.note && <span> — {g.note}</span>}
+            </li>
+          ))}
+        </ul>
+      </details>
 
       <p className="text-xs text-slate-400">
         쓸 수 있는 변수:{' '}

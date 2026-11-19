@@ -54,7 +54,9 @@ function tokenize(src) {
 //   power  := atom ('^' unary)?        <- 거듭제곱은 오른쪽 결합
 //   atom   := number | name | name '(' expr ')' | '(' expr ')'
 
-const FUNCTIONS = ['sin', 'cos', 'tan', 'exp', 'ln', 'log', 'sqrt', 'abs', 'asin', 'acos', 'atan'];
+// ln = 자연로그, log = 상용로그(밑 10), log2 = 밑 2 로그
+const FUNCTIONS = ['sin', 'cos', 'tan', 'exp', 'ln', 'log', 'sqrt', 'abs', 'asin', 'acos', 'atan',
+                   'sinh', 'cosh', 'tanh', 'log2', 'cbrt'];
 const CONSTANTS = { pi: Math.PI, e: Math.E };
 
 function parse(src) {
@@ -150,7 +152,9 @@ function collectVars(node, out = []) {
 const zeros = (n) => new Array(n).fill(0);
 const mapD = (d, f) => d.map(f);
 
-function evalAD(node, values, vars) {
+// degrees 가 true 이면 asin/acos/atan 의 결과를 도(°)로 돌려준다 (값과 미분 모두).
+// (삼각함수 sin/cos/tan 의 입력 변환은 propagate 가 변수 단위로 처리한다)
+function evalAD(node, values, vars, degrees = false) {
   const n = vars.length;
   switch (node.kind) {
     case 'const':
@@ -164,13 +168,13 @@ function evalAD(node, values, vars) {
     }
 
     case 'neg': {
-      const a = evalAD(node.operand, values, vars);
+      const a = evalAD(node.operand, values, vars, degrees);
       return { v: -a.v, d: mapD(a.d, (x) => -x) };
     }
 
     case 'binary': {
-      const a = evalAD(node.left, values, vars);
-      const b = evalAD(node.right, values, vars);
+      const a = evalAD(node.left, values, vars, degrees);
+      const b = evalAD(node.right, values, vars, degrees);
       switch (node.op) {
         case '+':
           return { v: a.v + b.v, d: a.d.map((x, i) => x + b.d[i]) };
@@ -207,16 +211,22 @@ function evalAD(node, values, vars) {
     }
 
     case 'call': {
-      const a = evalAD(node.arg, values, vars);
+      const a = evalAD(node.arg, values, vars, degrees);
       // 연쇄법칙: f(g(x))' = f'(g(x)) * g'(x)
       let v, dfdx;
+      // 역삼각함수의 결과는 라디안이다. 도 단위이면 결과에 180/π 를 곱해 도로 바꾸고,
+      // 결과가 K 배가 되므로 미분(기울기)도 똑같이 K 배가 된다.
+      const K = degrees ? 180 / Math.PI : 1;
       switch (node.name) {
         case 'sin':  v = Math.sin(a.v);  dfdx = Math.cos(a.v); break;
         case 'cos':  v = Math.cos(a.v);  dfdx = -Math.sin(a.v); break;
         case 'tan':  v = Math.tan(a.v);  dfdx = 1 / (Math.cos(a.v) ** 2); break;
-        case 'asin': v = Math.asin(a.v); dfdx = 1 / Math.sqrt(1 - a.v * a.v); break;
-        case 'acos': v = Math.acos(a.v); dfdx = -1 / Math.sqrt(1 - a.v * a.v); break;
-        case 'atan': v = Math.atan(a.v); dfdx = 1 / (1 + a.v * a.v); break;
+        case 'asin': v = Math.asin(a.v) * K; dfdx = K / Math.sqrt(1 - a.v * a.v); break;
+        case 'acos': v = Math.acos(a.v) * K; dfdx = -K / Math.sqrt(1 - a.v * a.v); break;
+        case 'atan': v = Math.atan(a.v) * K; dfdx = K / (1 + a.v * a.v); break;
+        case 'sinh': v = Math.sinh(a.v); dfdx = Math.cosh(a.v); break;
+        case 'cosh': v = Math.cosh(a.v); dfdx = Math.sinh(a.v); break;
+        case 'tanh': v = Math.tanh(a.v); dfdx = 1 - v * v; break;
         case 'exp':  v = Math.exp(a.v);  dfdx = v; break;
         case 'ln':
           if (a.v <= 0) throw new Error('ln 의 입력은 0보다 커야 합니다');
@@ -224,9 +234,14 @@ function evalAD(node, values, vars) {
         case 'log':
           if (a.v <= 0) throw new Error('log 의 입력은 0보다 커야 합니다');
           v = Math.log10(a.v); dfdx = 1 / (a.v * Math.LN10); break;
+        case 'log2':
+          if (a.v <= 0) throw new Error('log2 의 입력은 0보다 커야 합니다');
+          v = Math.log2(a.v); dfdx = 1 / (a.v * Math.LN2); break;
         case 'sqrt':
           if (a.v < 0) throw new Error('sqrt 의 입력은 음수일 수 없습니다');
           v = Math.sqrt(a.v); dfdx = 1 / (2 * v); break;
+        case 'cbrt':   // 세제곱근은 음수도 가능. d/dx x^(1/3) = 1/(3·x^(2/3))
+          v = Math.cbrt(a.v); dfdx = 1 / (3 * v * v); break;
         case 'abs':  v = Math.abs(a.v); dfdx = a.v >= 0 ? 1 : -1; break;
         default: throw new Error(`모르는 함수: ${node.name}`);
       }
@@ -246,6 +261,12 @@ function propagate(formula, inputs, opts = {}) {
   const ast = parse(formula);
   const vars = collectVars(ast);
 
+  // 도 단위에서는 변수만 라디안으로 바꾸므로, asin 같은 결과(도)를 sin 안에 바로 넣으면 단위가 섞여 틀린다.
+  // 조용히 틀린 값을 내는 대신 이유를 알려준다.
+  if (degrees && hasInverseTrigInsideTrig(ast)) {
+    throw new Error('도 단위에서는 asin/acos/atan 의 결과를 sin/cos/tan 안에 바로 넣을 수 없어요 (각도 단위를 라디안으로 바꾸거나 식을 나눠 쓰세요)');
+  }
+
   for (const name of vars) {
     if (!(name in inputs)) throw new Error(`변수 '${name}' 의 값이 없습니다`);
   }
@@ -260,7 +281,7 @@ function propagate(formula, inputs, opts = {}) {
     uncerts[name] = unc;
   }
 
-  const { v, d } = evalAD(ast, values, vars);
+  const { v, d } = evalAD(ast, values, vars, degrees);
 
   const terms = vars.map((name, i) => {
     const partial = d[i];
@@ -285,10 +306,24 @@ function isAngleVar(node, name, inside = false) {
   if (node.kind === 'var') return inside && node.name === name;
   if (node.kind === 'call') {
     const trig = ['sin', 'cos', 'tan'].includes(node.name);
-    return isAngleVar(node.arg, name, inside || trig);
+    // asin/acos/atan 의 입력은 각도가 아니라 비율이라서, 그 안의 변수는 라디안으로 바꾸지 않는다
+    const inverse = ['asin', 'acos', 'atan'].includes(node.name);
+    return isAngleVar(node.arg, name, inverse ? false : inside || trig);
   }
   if (node.kind === 'binary') return isAngleVar(node.left, name, inside) || isAngleVar(node.right, name, inside);
   if (node.kind === 'neg') return isAngleVar(node.operand, name, inside);
+  return false;
+}
+
+// sin/cos/tan 의 입력 안에 asin/acos/atan 이 들어 있는지 (도 단위에서 단위가 섞이는 식 감지용)
+function hasInverseTrigInsideTrig(node, insideTrig = false) {
+  if (node.kind === 'call') {
+    if (insideTrig && ['asin', 'acos', 'atan'].includes(node.name)) return true;
+    const trig = ['sin', 'cos', 'tan'].includes(node.name);
+    return hasInverseTrigInsideTrig(node.arg, insideTrig || trig);
+  }
+  if (node.kind === 'binary') return hasInverseTrigInsideTrig(node.left, insideTrig) || hasInverseTrigInsideTrig(node.right, insideTrig);
+  if (node.kind === 'neg') return hasInverseTrigInsideTrig(node.operand, insideTrig);
   return false;
 }
 
@@ -321,13 +356,13 @@ function formatResult(value, uncertainty, opts = {}) {
 }
 
 // ---------- 6. 검증용 수치 미분 (중앙 차분) ----------
-function numericPartials(formula, inputs, h = 1e-6) {
+function numericPartials(formula, inputs, h = 1e-6, degrees = false) {
   const ast = parse(formula);
   const vars = collectVars(ast);
   const base = {};
   for (const n of vars) base[n] = Number(inputs[n].value);
 
-  const evalAt = (vals) => evalAD(ast, vals, vars).v;
+  const evalAt = (vals) => evalAD(ast, vals, vars, degrees).v;
   const out = {};
   for (const n of vars) {
     const step = Math.abs(base[n]) > 0 ? Math.abs(base[n]) * h : h;

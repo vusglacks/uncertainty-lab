@@ -106,7 +106,7 @@ function explainTerms(c, r, nameOf, statOf, angleUnit) {
   const rows = r.terms.map((t) => {
     let text = null
     try {
-      text = partialText(c.expr, t.name, show)
+      text = partialText(c.expr, t.name, show, { degrees: angleUnit === 'deg' })
     } catch {
       text = null // 기호 미분에 실패해도 계산 결과 자체는 그대로 보여준다
     }

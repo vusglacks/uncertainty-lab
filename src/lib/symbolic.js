@@ -315,7 +315,9 @@ export function angleVarIds(node, inside = false, out = new Set()) {
   if (node.kind === 'var') {
     if (inside) out.add(node.name)
   } else if (node.kind === 'call') {
-    angleVarIds(node.arg, inside || ['sin', 'cos', 'tan'].includes(node.name), out)
+    // asin/acos/atan 의 입력은 각도가 아니라 비율이다 (engine.js 의 isAngleVar 와 같은 규칙)
+    const inverse = ['asin', 'acos', 'atan'].includes(node.name)
+    angleVarIds(node.arg, inverse ? false : inside || ['sin', 'cos', 'tan'].includes(node.name), out)
   } else if (node.kind === 'binary') {
     angleVarIds(node.left, inside, out)
     angleVarIds(node.right, inside, out)

@@ -31,6 +31,7 @@ Settings → Environment Variables에 넣고 Redeploy한다. DB 표는 `supabase
 src/
   lib/engine.js     수식 파서 + 자동 미분 + 불확도 전파 (직접 구현, 라이브러리 X)
   lib/stats.js      측정값 평균·표본표준편차·A형/B형/합성 불확도
+  lib/symbolic.js   기호 미분 (편미분식 글자) + 식 정리
   lib/expand.js     계산 블록 이름을 식으로 펼치기 (계산 블록끼리 연결)
   lib/calc.js       계산 블록과 engine.js 연결 (값 하나, 행별 값 목록)
   lib/regression.js 추세선 6종(직선·원점·2차·거듭제곱·지수·로그), R², 표준오차
@@ -44,6 +45,9 @@ test/
   graph.test.js     추세선·그래프 자료 검증 (91개)
   report.test.js    내보내기 표 검증 (16개)
   chain.test.js     계산 블록 연결·행별 값·그래프 축 검증 (72개)
+  symbolic.test.js  기호 미분을 자동 미분과 대조 (41개)
+  explain.test.js   계산 과정(편미분·항·기여율) 검증 (32개)
+  funcs.test.js     새 함수·도 단위 역삼각함수 검증 (68개)
   row.test.js       DB 변환 검증 (9개)
 docs/
   구조.md            화면·블록 구조 확정본
