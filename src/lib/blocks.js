@@ -12,7 +12,7 @@ export const BLOCK_LABELS = {
 export function newBlock(type) {
   const base = { id: uid(), type, name: '' }
   if (type === 'measure') return { ...base, unit: '', rawText: '', typeB: '', bFactors: [] }
-  if (type === 'calc') return { ...base, formula: '' }
+  if (type === 'calc') return { ...base, formula: '', hand: '' }
   if (type === 'graph') return { ...base, name: undefined, xName: '', yName: '', fit: 'linear' }
   throw new Error('알 수 없는 블록 종류: ' + type)
 }

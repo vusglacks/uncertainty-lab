@@ -2,6 +2,7 @@ import { unknownFormulaVars } from '../../lib/blocks'
 import { evaluateCalc, evaluateRows } from '../../lib/calc'
 import { formatResult } from '../../lib/engine'
 import { formatNumber } from '../../lib/stats'
+import { compareHand } from '../../lib/compare'
 import ExplainTable from '../ExplainTable'
 import { FUNCTION_GROUPS, FUNCTION_SUMMARY } from '../../lib/functions'
 
@@ -16,6 +17,7 @@ export default function CalcBlock({ block, namesAbove, blocksAbove, angleUnit, o
   const unknown = unknownFormulaVars(block.formula, namesAbove)
   const result = evaluateCalc(block.formula, blocksAbove, angleUnit)
   const rows = evaluateRows(block.formula, blocksAbove, angleUnit)
+  const hand = result.ok ? compareHand(result.value, result.uncertainty, block.hand) : { empty: true }
   const topShare = result.ok ? Math.max(...result.terms.map((t) => t.share), 0) : 0
 
   return (
@@ -146,6 +148,36 @@ export default function CalcBlock({ block, namesAbove, blocksAbove, angleUnit, o
         </p>
       ))}
 
+      {result.ok && (
+        <details className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600" open={!!block.hand}>
+          <summary className="cursor-pointer select-none">손계산과 비교 — 내가 구한 값이 맞는지 확인</summary>
+          <div className="mt-2 space-y-2">
+            <label className="flex flex-col gap-1">
+              <span className="text-slate-500">손으로 구한 결과 (예: 9.81 ± 0.02, 값만 써도 돼요)</span>
+              <input
+                value={block.hand ?? ''}
+                onChange={(e) => onChange({ hand: e.target.value })}
+                placeholder="예: 9.81 ± 0.02"
+                className="w-64 rounded border border-slate-300 px-2 py-1 font-mono"
+              />
+            </label>
+            {hand.ok === false && <p className="text-amber-700">{hand.message}</p>}
+            {hand.ok && (
+              <div className="space-y-1">
+                <p className={`font-semibold ${hand.allMatch ? 'text-emerald-700' : 'text-red-700'}`}>
+                  {hand.allMatch ? '✓ 일치해요' : '✗ 일치하지 않아요'}
+                  <span className="ml-2 font-mono font-normal text-slate-500">프로그램 결과 {hand.shownText}</span>
+                </p>
+                <HandRow label="값" check={hand.valueCheck} />
+                {hand.uncertaintyCheck && <HandRow label="불확도" check={hand.uncertaintyCheck} />}
+                {!hand.uncertaintyCheck && <p className="text-slate-400">불확도까지 비교하려면 “값 ± 불확도”로 써 보세요.</p>}
+                <p className="text-slate-400">화면에 보이는 유효숫자 자리까지 반올림해서 비교해요.</p>
+              </div>
+            )}
+          </div>
+        </details>
+      )}
+
       {result.ok && result.explain && (
         <details className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600">
           <summary className="cursor-pointer select-none">계산 과정 보기 — 편미분식과 불확도 총괄표</summary>
@@ -195,5 +227,16 @@ export default function CalcBlock({ block, namesAbove, blocksAbove, angleUnit, o
         </details>
       )}
     </div>
+  )
+}
+
+// 손계산 비교 한 줄: 일치하면 초록, 아니면 빨강 + 차이(%)와 안내
+function HandRow({ label, check }) {
+  return (
+    <p className={`font-mono ${check.match ? 'text-emerald-700' : 'text-red-700'}`}>
+      {check.match ? '✓' : '✗'} {label}: 내 값 {check.hand} → 프로그램 {check.shown}
+      {!check.match && check.pct !== null && <span> (차이 {Number(check.pct.toPrecision(3))}%)</span>}
+      {!check.match && check.hint && <span className="ml-1 font-sans text-slate-500">— {check.hint}</span>}
+    </p>
   )
 }
