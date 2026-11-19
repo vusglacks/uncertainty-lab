@@ -20,11 +20,11 @@ export default function MeasureBlock({ block, onChange }) {
           />
         </label>
         <label className="flex flex-1 flex-col gap-1">
-          <span className="text-slate-500">단위</span>
+          <span className="text-slate-500">단위 (계산 블록이 단위를 검사해요)</span>
           <input
             value={block.unit}
             onChange={(e) => onChange({ unit: e.target.value })}
-            placeholder="예: m"
+            placeholder="예: m, s, kg, m/s²"
             className="rounded border border-slate-300 px-2 py-1"
           />
         </label>

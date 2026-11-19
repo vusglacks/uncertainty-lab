@@ -146,7 +146,7 @@ console.log('\n[5] 그래프: 계산 블록을 축으로 (T 측정 → T² 계�
   ok('점마다 x 오차막대가 다른 값', m.points[0].ux !== m.points[4].ux)
   close('y 오차막대는 B형 그대로', m.points[2].uy, 0.01, 1e-12)
   ok('오차막대 표시 여부', m.hasXErr && m.hasYErr)
-  ok('축 이름', m.xLabel === 'T2' && m.yLabel === 'L (m)', `${m.xLabel} / ${m.yLabel}`)
+  ok('축 이름: 계산 블록 축에는 결과 단위가 붙는다', m.xLabel === 'T2 (s²)' && m.yLabel === 'L (m)', `${m.xLabel} / ${m.yLabel}`)
   ok('직선 추세선', m.fit && m.fit.type === 'linear' && m.fit.r2 > 0.9999, JSON.stringify(m.fit && m.fit.r2))
   close('기울기 L/T² = g/(4π²)', m.fit.coef.a, g / (4 * Math.PI ** 2), 1e-3)
   // 반대로 y 축에 계산 블록

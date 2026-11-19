@@ -14,6 +14,7 @@ import { parse, propagate, formatResult } from './engine.js'
 import { measureStats } from './stats.js'
 import { compileFormula } from './expand.js'
 import { partialText, simplifiedText, angleVarIds } from './symbolic.js'
+import { analyzeUnits } from './unitcheck.js'
 
 function fail(message) {
   return { ok: false, message }
@@ -44,7 +45,7 @@ function statsOf(vars) {
 // 반환
 //   수식이 비어 있으면  { empty: true }
 //   계산에 실패하면     { ok: false, message }
-//   성공하면            { ok: true, value, uncertainty, text, terms, expanded }
+//   성공하면            { ok: true, value, uncertainty, text, terms, expanded, explain, units }
 //     text     : 유효숫자를 맞춘 "값 ± 불확도"
 //     terms    : 변수(측정 블록)별 { name, share(%), inputText } — 오차 기여도가 큰 순서
 //     expanded : 계산 블록 이름을 펼쳤을 때만 펼친 식 글자, 아니면 null
@@ -93,6 +94,18 @@ export function evaluateCalc(formula, blocksAbove, angleUnit) {
     terms: r.terms.map((t) => ({ name: nameOf[t.name], share: t.share, inputText: inputTexts[t.name] })),
     expanded: c.usedCalcs.length ? c.text : null,
     explain: explainTerms(c, r, nameOf, statOf, angleUnit),
+    units: unitInfo(c, angleUnit), // 결과 단위와 단위 경고
+  }
+}
+
+// 단위 검사 결과를 화면에 쓰기 좋게 정리한다. 단위 검사가 실패해도 계산 결과는 그대로 보여준다.
+//   { text: "m/s²", named: "N" | null, warnings: [...], notes: [...] }
+function unitInfo(c, angleUnit) {
+  try {
+    const u = analyzeUnits(c.expr, c.vars, angleUnit)
+    return { text: u.text, named: u.named, warnings: u.warnings, notes: u.notes }
+  } catch {
+    return { text: '', named: null, warnings: [], notes: [] }
   }
 }
 
@@ -191,5 +204,5 @@ export function evaluateRows(formula, blocksAbove, angleUnit) {
     }
     rows.push({ value: r.value, u: r.uncertainty })
   }
-  return { ok: true, rows, warnings, notes }
+  return { ok: true, rows, warnings, notes, units: unitInfo(c, angleUnit) }
 }

@@ -45,7 +45,7 @@ function calcRows(blocks, angleUnit) {
     let result = DASH
     let share = DASH
     if (r.ok) {
-      result = r.text
+      result = r.units?.text ? `${r.text} ${r.units.text}` : r.text // 결과 단위(예: m/s²)를 뒤에 붙인다
       share = r.terms.length ? r.terms.map((t) => `${t.name} ${t.share.toFixed(1)}%`).join(', ') : DASH
     } else if (!r.empty) {
       result = `계산할 수 없음: ${r.message}`

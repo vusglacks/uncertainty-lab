@@ -83,6 +83,10 @@ export default function CalcBlock({ block, namesAbove, blocksAbove, angleUnit, o
           <p className="text-base font-semibold text-slate-900">
             {block.name ? `${block.name} = ` : ''}
             {result.text}
+            {result.units.text && <span className="ml-1.5 font-normal text-slate-600">{result.units.text}</span>}
+            {result.units.named && result.units.named !== result.units.text && (
+              <span className="ml-1.5 text-xs font-normal text-slate-400">(= {result.units.named})</span>
+            )}
           </p>
 
           {result.terms.length > 0 && (
@@ -130,6 +134,17 @@ export default function CalcBlock({ block, namesAbove, blocksAbove, angleUnit, o
           )}
         </div>
       )}
+
+      {result.ok && result.units.warnings.map((w) => (
+        <p key={w} className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
+          단위 확인: {w}
+        </p>
+      ))}
+      {result.ok && result.units.notes.map((n) => (
+        <p key={n} className="text-xs text-slate-400">
+          {n}
+        </p>
+      ))}
 
       {result.ok && result.explain && (
         <details className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600">

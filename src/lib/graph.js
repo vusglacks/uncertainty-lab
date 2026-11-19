@@ -19,8 +19,8 @@ function nearestIndex(blocksAbove, name) {
   return -1
 }
 
-function label(block) {
-  return block.unit ? `${block.name} (${block.unit})` : block.name
+function label(block, unit = block.unit) {
+  return unit ? `${block.name} (${unit})` : block.name
 }
 
 // 축 하나가 내놓는 "행 목록"을 만든다. 행 하나 = { value, u } (값과 그 점의 불확도)
@@ -45,7 +45,7 @@ function axisRows(축, name, blocksAbove, angleUnit) {
     const r = evaluateRows(b.formula, blocksAbove.slice(0, index), angleUnit)
     if (r.empty) return fail(`${축}축 '${name}' 계산 블록에 수식이 없어요`)
     if (!r.ok) return fail(`${축}축 '${name}' 계산 블록: ${r.message}`)
-    return { ok: true, rows: r.rows, label: label(b), warnings: r.warnings.map((w) => `${name}: ${w}`) }
+    return { ok: true, rows: r.rows, label: label(b, r.units?.text), warnings: r.warnings.map((w) => `${name}: ${w}`) }
   }
 
   return fail(`${축}축 '${name}' 은(는) 그래프 축으로 쓸 수 없는 블록이에요`)
