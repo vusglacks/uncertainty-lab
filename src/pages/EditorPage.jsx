@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { getExperiment, saveExperiment } from '../lib/storage'
+import { useStorage } from '../lib/storageContext'
 import { newBlock, duplicateNames, renameInFormula, isNameUsedElsewhere } from '../lib/blocks'
 import BlockList from '../components/BlockList'
 import AddBlockButton from '../components/AddBlockButton'
@@ -13,6 +13,7 @@ const SAVE_DELAY = 800
 // 편집 화면 — 블록을 위에서 아래로 쌓아 계산한다. 원본(제목·블록)만 서버에 자동 저장한다.
 export default function EditorPage() {
   const { id } = useParams()
+  const { getExperiment, saveExperiment } = useStorage()
   const [exp, setExp] = useState(null)
   const [loadState, setLoadState] = useState('loading') // 'loading' | 'ready' | 'notfound' | 'error'
   const [loadError, setLoadError] = useState('')

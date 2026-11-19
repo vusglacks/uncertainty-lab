@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import { Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { supabaseConfigured } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import { authErrorMessage } from '../lib/authMessages'
-import { SetupNeeded } from '../components/RequireAuth'
+import { SetupNeeded } from '../components/AppShell'
 
 // 로그인 / 회원가입 화면. 이메일 + 비밀번호 방식.
 export default function LoginPage() {
@@ -100,6 +100,13 @@ export default function LoginPage() {
       >
         {isLogin ? '처음이에요 — 회원가입' : '이미 계정이 있어요 — 로그인'}
       </button>
+
+      <p className="mt-6 text-xs text-slate-500">
+        <Link to="/" className="underline">
+          로그인 없이 계속 쓰기
+        </Link>{' '}
+        — 실험이 이 브라우저에만 저장돼요.
+      </p>
     </main>
   )
 }

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { listExperiments, saveExperiment, deleteExperiment } from '../lib/storage'
+import { Link, useNavigate } from 'react-router-dom'
+import { useStorage } from '../lib/storageContext'
+import { supabaseConfigured } from '../lib/supabase'
 import { listLocalExperiments, removeLocalExperiment } from '../lib/localImport'
 import { useAuth } from '../lib/auth'
 import { uid } from '../lib/id'
@@ -10,6 +11,7 @@ import ConfirmDialog from '../components/ConfirmDialog'
 export default function HomePage() {
   const navigate = useNavigate()
   const { user, signOut } = useAuth()
+  const { mode, listExperiments, saveExperiment, deleteExperiment } = useStorage()
   const [experiments, setExperiments] = useState(null) // null = 아직 불러오는 중
   const [loadError, setLoadError] = useState('')
   const [actionError, setActionError] = useState('')
@@ -94,17 +96,27 @@ export default function HomePage() {
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-slate-900">내 실험</h1>
         <div className="flex items-center gap-3 text-xs text-slate-500">
-          <span>{user?.email}</span>
-          <button onClick={signOut} className="underline hover:text-slate-800">
-            로그아웃
-          </button>
+          {user ? (
+            <>
+              <span>{user.email}</span>
+              <button onClick={signOut} className="underline hover:text-slate-800">
+                로그아웃
+              </button>
+            </>
+          ) : (
+            supabaseConfigured && (
+              <Link to="/login" state={{ from: '/' }} className="underline hover:text-slate-800">
+                로그인
+              </Link>
+            )
+          )}
         </div>
       </div>
 
-      {localCount > 0 && (
+      {mode === 'cloud' && localCount > 0 && (
         <div className="mt-6 flex flex-wrap items-center gap-3 rounded-lg bg-sky-50 px-4 py-3 text-sm text-sky-900">
           <span className="flex-1">
-            이 브라우저에만 저장돼 있던 실험이 {localCount}개 있어요. 내 계정으로 가져올까요?
+            로그인 없이 만들어 이 브라우저에만 저장돼 있던 실험이 {localCount}개 있어요. 내 계정에 저장할까요?
           </span>
           <button
             onClick={importLocal}

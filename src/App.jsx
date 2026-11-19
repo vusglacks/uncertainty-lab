@@ -1,17 +1,17 @@
 import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom'
 import { AuthProvider } from './lib/auth'
-import RequireAuth from './components/RequireAuth'
+import AppShell from './components/AppShell'
 import LoginPage from './pages/LoginPage'
 import HomePage from './pages/HomePage'
 import EditorPage from './pages/EditorPage'
 import ExportPage from './pages/ExportPage'
 
 // 주소(경로)마다 보여줄 화면을 연결한다.
-// /login 만 누구나 볼 수 있고, 나머지는 RequireAuth(로그인 확인)로 감싼다.
+// 로그인하지 않아도 모든 화면을 쓸 수 있다. AppShell 이 로그인 여부에 따라 저장소(계정 / 이 브라우저)를 정한다.
 const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
   {
-    element: <RequireAuth />,
+    element: <AppShell />,
     children: [
       { path: '/', element: <HomePage /> },
       { path: '/exp/:id', element: <EditorPage /> },

@@ -72,6 +72,8 @@ export function columnLetter(index) {
 }
 
 const RESERVED = new Set([...FUNCTION_GROUPS.flatMap((g) => g.names), ...CONSTANTS])
+// 번호 열에 흔히 붙는 제목 (이 제목이면서 값이 1, 2, 3 … 으로 늘어나면 번호 열로 본다)
+const INDEX_HEADER_RE = /^(시행|번호|회차|회|횟수|순번|no\.?|n|#|index|idx|trial|run)$/i
 const NAME_RE = /^[A-Za-z_가-힣][A-Za-z0-9_가-힣]*$/
 
 // 열 제목에서 이름과 단위를 짐작한다.
@@ -94,7 +96,7 @@ export function guessNameUnit(header) {
 //   숫자로 읽을 수 없는 칸은 skipped 에 모아 화면에서 알려준다.
 //   숫자가 하나도 없는 열(글자 열)은 건너뛴다.
 // 반환: [{ index, letter, header, name, unit, values:[숫자], skipped:[글자], likelyIndex }]
-//   likelyIndex: 제목 없이 1,2,3… 으로 늘어나는 번호 열 같으면 true (기본으로 선택하지 않는다)
+//   likelyIndex: 1,2,3… 으로 늘어나는 번호 열 같으면 true (제목이 없거나 "시행", "번호" 등일 때. 기본으로 선택하지 않는다)
 export function detectColumns(rows) {
   const width = rows.reduce((w, r) => Math.max(w, r.length), 0)
   const cols = []
@@ -123,7 +125,8 @@ export function detectColumns(rows) {
     if (values.length === 0) continue
 
     const { name, unit } = guessNameUnit(header)
-    const likelyIndex = header === null && values.length >= 2 && values.every((v, i) => v === i + 1)
+    const indexHeader = header === null || INDEX_HEADER_RE.test(header) //  제목이 없거나 "시행", "번호" 같은 제목
+    const likelyIndex = indexHeader && values.length >= 2 && values.every((v, i) => v === i + 1)
     cols.push({ index: c, letter: columnLetter(c), header, name, unit, values, skipped, likelyIndex })
   }
   return cols

@@ -35,3 +35,6 @@ export async function deleteExperiment(id) {
   const { error } = await supabase.from('experiments').delete().eq('id', id)
   check(error, '삭제하지')
 }
+
+// 로그인했을 때 쓰는 저장소 묶음. 로그인 없이 쓸 때의 guestStorage.js 와 함수 이름·모양이 같다.
+export const cloudStorage = { listExperiments, getExperiment, saveExperiment, deleteExperiment }

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { getExperiment } from '../lib/storage'
+import { useStorage } from '../lib/storageContext'
 import { buildReport } from '../lib/report'
 import { copyTable } from '../lib/exportBrowser'
 import { buildWorkbook } from '../lib/excel'
@@ -12,6 +12,7 @@ import GraphView from '../components/GraphView'
 // 결과는 저장해 둔 것이 아니라 이 화면을 열 때마다 원본에서 새로 계산한다.
 export default function ExportPage() {
   const { id } = useParams()
+  const { getExperiment } = useStorage()
   const [exp, setExp] = useState(null)
   const [state, setState] = useState('loading') // 'loading' | 'ready' | 'notfound' | 'error'
   const [error, setError] = useState('')
