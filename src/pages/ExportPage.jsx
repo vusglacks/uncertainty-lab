@@ -3,6 +3,8 @@ import { Link, useParams } from 'react-router-dom'
 import { getExperiment } from '../lib/storage'
 import { buildReport } from '../lib/report'
 import { copyTable } from '../lib/exportBrowser'
+import { buildWorkbook } from '../lib/excel'
+import { saveWorkbook } from '../lib/excelIO'
 import GraphView from '../components/GraphView'
 
 // 내보내기 화면 — 보고서에 넣을 표(측정 결과, 계산 결과)와 그래프를 보여주고, 복사·저장한다.
@@ -60,6 +62,8 @@ export default function ExportPage() {
         보고서에 넣을 결과예요. 표는 복사해서 붙여넣고, 그래프는 이미지로 저장하세요.
       </p>
 
+      {(hasMeasure || hasCalc) && <XlsxButton blocks={exp.blocks} angleUnit={exp.angleUnit} title={exp.title} />}
+
       {!hasMeasure && !hasCalc && report.graphs.length === 0 && (
         <p className="mt-8 rounded-lg border border-dashed border-slate-300 px-4 py-8 text-center text-sm text-slate-400">
           아직 내보낼 결과가 없어요. 편집 화면에서 측정 블록이나 계산 블록을 만들어 보세요.
@@ -77,6 +81,33 @@ export default function ExportPage() {
         </section>
       ))}
     </main>
+  )
+}
+
+// 엑셀 파일(.xlsx) 저장 버튼 — 측정 결과, 계산 결과, 불확도 총괄표, 측정값 원본, 그래프 데이터를 시트별로 담는다.
+function XlsxButton({ blocks, angleUnit, title }) {
+  const [status, setStatus] = useState(null) // { kind, text }
+
+  async function save() {
+    setStatus(null)
+    try {
+      const sheets = buildWorkbook(blocks, angleUnit)
+      const safe = (title || '실험').replace(/[\\/:*?"<>|]/g, '_').trim() || '실험'
+      await saveWorkbook(sheets, `${safe}.xlsx`)
+      setStatus({ kind: 'ok', text: '엑셀 파일을 저장했어요' })
+    } catch (e) {
+      setStatus({ kind: 'error', text: e.message || '저장하지 못했어요' })
+    }
+  }
+
+  return (
+    <div className="mt-6 flex flex-wrap items-center gap-3">
+      <button onClick={save} className="rounded-lg bg-slate-900 px-3 py-2 text-xs text-white hover:bg-slate-700">
+        엑셀 파일(.xlsx)로 저장
+      </button>
+      <span className="text-xs text-slate-400">모든 표와 측정값 원본, 그래프 데이터가 시트별로 들어가요</span>
+      {status && <span className={`text-xs ${status.kind === 'ok' ? 'text-emerald-700' : 'text-amber-700'}`}>{status.text}</span>}
+    </div>
   )
 }
 

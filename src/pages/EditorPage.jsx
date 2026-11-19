@@ -4,6 +4,7 @@ import { getExperiment, saveExperiment } from '../lib/storage'
 import { newBlock, duplicateNames, renameInFormula, isNameUsedElsewhere } from '../lib/blocks'
 import BlockList from '../components/BlockList'
 import AddBlockButton from '../components/AddBlockButton'
+import ImportPanel from '../components/ImportPanel'
 import ConfirmDialog from '../components/ConfirmDialog'
 
 // 글자를 칠 때마다 서버에 저장하면 낭비라서, 마지막 수정 뒤 이만큼(ms) 조용하면 한 번에 저장한다.
@@ -232,7 +233,13 @@ export default function EditorPage() {
           onMove={moveBlock}
           onRemove={removeBlock}
         />
-        <AddBlockButton onAdd={addBlock} />
+        <div className="flex flex-wrap items-start gap-2">
+          <AddBlockButton onAdd={addBlock} />
+          <ImportPanel
+            existingNames={exp.blocks.map((b) => b.name)}
+            onAdd={(added) => update({ blocks: [...exp.blocks, ...added] })}
+          />
+        </div>
       </div>
 
       <ConfirmDialog

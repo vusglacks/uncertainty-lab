@@ -1,6 +1,6 @@
 // 블록을 만들고 다루는 도우미 함수들.
-import { uid } from './id'
-import { parse, collectVars } from './engine'
+import { uid } from './id.js'
+import { parse, collectVars } from './engine.js'
 
 export const BLOCK_LABELS = {
   measure: '측정 블록',
