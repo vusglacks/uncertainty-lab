@@ -2,6 +2,7 @@ import { unknownFormulaVars } from '../../lib/blocks'
 import { evaluateCalc, evaluateRows } from '../../lib/calc'
 import { formatResult } from '../../lib/engine'
 import { formatNumber } from '../../lib/stats'
+import ExplainTable from '../ExplainTable'
 
 // 행별 값 목록에서 화면에 보여줄 최대 행 수 (나머지는 "…"로 줄인다)
 const MAX_SHOWN_ROWS = 12
@@ -114,6 +115,13 @@ export default function CalcBlock({ block, namesAbove, blocksAbove, angleUnit, o
             </div>
           )}
         </div>
+      )}
+
+      {result.ok && result.explain && (
+        <details className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600">
+          <summary className="cursor-pointer select-none">계산 과정 보기 — 편미분식과 불확도 총괄표</summary>
+          <ExplainTable name={block.name} explain={result.explain} resultText={result.text} />
+        </details>
       )}
 
       {result.ok && result.expanded && (

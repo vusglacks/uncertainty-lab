@@ -10,9 +10,10 @@
 //    evaluateCalc : 값 하나 (측정 블록의 평균과 합성표준불확도로 계산)
 //    evaluateRows : 행별 값 목록 (측정 블록의 i번째 값끼리 계산) — 그래프 축으로 쓴다
 // ============================================================
-import { propagate, formatResult } from './engine.js'
+import { parse, propagate, formatResult } from './engine.js'
 import { measureStats } from './stats.js'
 import { compileFormula } from './expand.js'
+import { partialText, simplifiedText, angleVarIds } from './symbolic.js'
 
 function fail(message) {
   return { ok: false, message }
@@ -60,6 +61,7 @@ export function evaluateCalc(formula, blocksAbove, angleUnit) {
   const inputs = {}
   const nameOf = {}
   const inputTexts = {}
+  const statOf = {}
   for (const { v, s } of got.stats) {
     if (s.uC === null) {
       return fail(`'${v.name}' 의 불확도를 계산할 수 없어요 (측정값 2개 이상, 또는 B형 불확도가 필요해요)`)
@@ -67,6 +69,7 @@ export function evaluateCalc(formula, blocksAbove, angleUnit) {
     inputs[v.id] = { value: s.mean, uncertainty: s.uC }
     nameOf[v.id] = v.name
     inputTexts[v.id] = formatResult(s.mean, s.uC).text
+    statOf[v.id] = s
   }
 
   // 3) engine.js 로 값과 불확도를 계산한다. (자동 미분 -> 오차 전파)
@@ -89,6 +92,48 @@ export function evaluateCalc(formula, blocksAbove, angleUnit) {
     // 오차 기여도(%) = (∂f/∂xi · u(xi))² / u_c² × 100  — engine.js 가 이미 share 로 계산해 둠
     terms: r.terms.map((t) => ({ name: nameOf[t.name], share: t.share, inputText: inputTexts[t.name] })),
     expanded: c.usedCalcs.length ? c.text : null,
+    explain: explainTerms(c, r, nameOf, statOf, angleUnit),
+  }
+}
+
+// "계산 과정 보기"에 쓸 자료: 편미분식, 변수별 값·불확도, 항(∂f/∂x·u), 기여율.
+//   u_c(f) = √( Σ (∂f/∂xᵢ · u(xᵢ))² )  이므로 항 하나가 (∂f/∂xᵢ · u(xᵢ)) 이다.
+// 편미분 "값"은 engine.js 의 자동 미분이 구한 것이고, 편미분 "식"은 symbolic.js 가 기호로 미분한 것이다.
+// 도(°) 단위에서 삼각함수 안의 변수는 라디안으로 바꿔서 미분하므로, 그 변수의 편미분·u 는 라디안 기준이다.
+function explainTerms(c, r, nameOf, statOf, angleUnit) {
+  const angleIds = angleUnit === 'deg' ? angleVarIds(parse(c.expr)) : new Set()
+  const show = (id) => nameOf[id] ?? id
+  const rows = r.terms.map((t) => {
+    let text = null
+    try {
+      text = partialText(c.expr, t.name, show)
+    } catch {
+      text = null // 기호 미분에 실패해도 계산 결과 자체는 그대로 보여준다
+    }
+    return {
+      name: nameOf[t.name],
+      x: statOf[t.name].mean, //        변수의 값(평균), 입력한 단위 그대로
+      u: statOf[t.name].uC, //          변수의 합성표준불확도, 입력한 단위 그대로
+      partialText: text, //             ∂f/∂x 식 (너무 길면 null)
+      partial: t.partial, //            ∂f/∂x 값 (각도 변수는 라디안 기준)
+      term: t.contribution, //          ∂f/∂x · u(x)  (각도 변수는 u 를 라디안으로 바꾼 값)
+      share: t.share, //                기여율 (%)
+      radians: angleIds.has(t.name), // 도 → 라디안으로 바꿔서 계산했는가
+    }
+  })
+  let simplified = null
+  try {
+    simplified = simplifiedText(c.expr, show)
+  } catch {
+    simplified = null
+  }
+  return {
+    formulaText: simplified ?? c.text, // 정리한 식 (계산 블록 이름은 펼친 상태)
+    rows,
+    sumSquares: rows.reduce((sum, row) => sum + row.term ** 2, 0), // Σ 항², u_c² 와 같다
+    angleNotes: rows
+      .filter((row) => row.radians)
+      .map((row) => `${row.name}: 도(°)를 라디안으로 바꿔 미분했어요 (u = ${Number(row.u.toPrecision(6))}° → ${Number(((row.u * Math.PI) / 180).toPrecision(6))} rad). 편미분과 항은 라디안 기준이에요`),
   }
 }
 

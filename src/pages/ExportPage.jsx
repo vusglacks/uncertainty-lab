@@ -68,6 +68,7 @@ export default function ExportPage() {
 
       {hasMeasure && <Section title="측정 결과" rows={report.measure} />}
       {hasCalc && <Section title="계산 결과" rows={report.calc} />}
+      {report.summary.length > 1 && <Section title="불확도 총괄표" rows={report.summary} />}
 
       {report.graphs.map((g) => (
         <section key={g.id} className="mt-10">

@@ -1,5 +1,5 @@
 import { tableToTsv, tableToHtml } from '../src/lib/exportTable.js'
-import { buildReport, MEASURE_HEADER, CALC_HEADER } from '../src/lib/report.js'
+import { buildReport, MEASURE_HEADER, CALC_HEADER, SUMMARY_HEADER } from '../src/lib/report.js'
 
 let pass = 0, fail = 0
 function ok(label, cond, detail = '') {
@@ -39,8 +39,13 @@ console.log('\n[2] 보고서 표')
   ok('계산 못 하면 이유를 적는다', r.calc[2][2].startsWith('계산할 수 없음'), r.calc[2][2])
   ok('빈 수식은 -', r.calc[3][2] === '-')
   ok('그래프 1개, 제목', r.graphs.length === 1 && r.graphs[0].title === '그래프 1' && r.graphs[0].model.ok)
+  ok('총괄표: 머리글 + (L, T 변수 2줄 + u_c 줄) + 못 계산하는 블록은 제외', r.summary.length === 4 && r.summary[0] === SUMMARY_HEADER, String(r.summary.length))
+  ok('총괄표: 열 개수가 머리글과 같다', r.summary.every((row) => row.length === SUMMARY_HEADER.length))
+  const tRow = r.summary.find((row) => row[1] === 'T')
+  ok('총괄표 T 줄: 편미분식과 기여율', tRow[4] === '-8*pi^2*L/T^3' && tRow[7] === '66.5%', JSON.stringify(tRow))
+  ok('총괄표 마지막 줄 u_c', r.summary[3][1] === 'u_c = √(Σ 항²)' && r.summary[3][7] === '100%', JSON.stringify(r.summary[3]))
   const none = buildReport([], 'deg')
-  ok('블록이 없으면 머리글만', none.measure.length === 1 && none.calc.length === 1 && none.graphs.length === 0)
+  ok('블록이 없으면 머리글만', none.measure.length === 1 && none.calc.length === 1 && none.summary.length === 1 && none.graphs.length === 0)
   const blank = buildReport([measure('', '')], 'deg')
   ok('값이 없는 측정 블록은 - 로 채움', blank.measure[1][0] === '-' && blank.measure[1][2] === '0' && blank.measure[1][8] === '-')
 }
